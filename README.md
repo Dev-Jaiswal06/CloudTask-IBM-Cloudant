@@ -75,12 +75,6 @@ http://localhost:5000
 
 ---
 
-## 📸 Screenshots
-
-Add screenshots inside the `screenshots` folder.
-
----
-
 ## 👨‍💻 Author
 
 **Dev Jaiswal**

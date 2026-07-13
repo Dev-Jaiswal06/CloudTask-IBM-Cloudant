@@ -1,171 +1,203 @@
-const API = "http://localhost:5000/tasks";
+const API = "/tasks";
 
 let allTasks = [];
+let currentFilter = "all";
 
-// Load all tasks
 async function loadTasks() {
     try {
         const res = await fetch(API);
         allTasks = await res.json();
-        renderTasks(allTasks);
+        applyFilter();
     } catch (err) {
         console.error(err);
     }
 }
 
-// Render tasks
-function renderTasks(data) {
+function applyFilter() {
+    let filtered = allTasks;
 
+    if (currentFilter === "active") {
+        filtered = allTasks.filter(t => !t.completed);
+    } else if (currentFilter === "completed") {
+        filtered = allTasks.filter(t => t.completed);
+    }
+
+    const text = document.getElementById("search").value.toLowerCase();
+    if (text) {
+        filtered = filtered.filter(t => t.title.toLowerCase().includes(text));
+    }
+
+    renderTasks(filtered);
+}
+
+function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    applyFilter();
+}
+
+function renderTasks(data) {
     const list = document.getElementById("taskList");
     list.innerHTML = "";
 
-    document.getElementById("count").innerText = `Total Tasks : ${data.length}`;
+    const countEl = document.getElementById("count");
+    countEl.textContent = data.length ? `${data.length} task${data.length !== 1 ? "s" : ""}` : "";
+
+    const clearBtn = document.getElementById("clearAll");
+    clearBtn.style.display = allTasks.length > 0 ? "inline-block" : "none";
 
     if (data.length === 0) {
-        list.innerHTML = `<div class="empty">📭 No Tasks Found</div>`;
+        const msg = currentFilter === "completed"
+            ? "No completed tasks yet."
+            : currentFilter === "active"
+            ? "All done! Nothing pending."
+            : "Nothing here yet. Add a task above.";
+        list.innerHTML = `<div class="empty">${msg}</div>`;
         return;
     }
 
     data.forEach(task => {
-
-        list.innerHTML += `
-        <div class="task">
-
-            <span>${task.title}</span>
-
-            <div class="actions">
-
-                <button
-                    class="edit"
-                    onclick="editTask('${task._id}','${task.title}')">
-                    Edit
-                </button>
-
-                <button
-                    class="delete"
-                    onclick="deleteTask('${task._id}')">
-                    Delete
-                </button>
-
+        const div = document.createElement("div");
+        div.className = "task";
+        const done = task.completed ? "done" : "";
+        const btnLabel = task.completed ? "Undo" : "Done";
+        div.innerHTML = `
+            <span class="task-text ${done}">${task.title}</span>
+            <div class="task-actions">
+                <button class="btn-done" onclick="toggleDone('${task._id}', this)">${btnLabel}</button>
+                <button class="btn-edit" onclick="startEdit('${task._id}', this)">Edit</button>
+                <button class="btn-delete" onclick="deleteTask('${task._id}')">Delete</button>
             </div>
-
-        </div>
         `;
-
+        list.appendChild(div);
     });
-
 }
 
-// Add Task
+async function toggleDone(id, btn) {
+    const task = allTasks.find(t => t._id === id);
+    if (!task) return;
+
+    const newVal = !task.completed;
+
+    try {
+        await fetch(`${API}/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                title: task.title,
+                completed: newVal
+            })
+        });
+        task.completed = newVal;
+        applyFilter();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 async function addTask() {
-
     const input = document.getElementById("taskInput");
-
     const title = input.value.trim();
 
     if (!title) {
-        alert("Please enter a task.");
+        input.focus();
         return;
     }
 
     try {
-
         await fetch(API, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                title
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title })
         });
-
         input.value = "";
-
         await loadTasks();
-
-        alert("✅ Task Added Successfully");
-
     } catch (err) {
         console.error(err);
     }
-
 }
 
-// Delete Task
 async function deleteTask(id) {
-
     try {
-
-        await fetch(`${API}/${id}`, {
-            method: "DELETE"
-        });
-
+        await fetch(`${API}/${id}`, { method: "DELETE" });
         await loadTasks();
-
     } catch (err) {
         console.error(err);
     }
-
 }
 
-// Edit Task
-async function editTask(id, oldTitle) {
-
-    const newTitle = prompt("Update Task", oldTitle);
-
-    if (!newTitle) return;
+async function clearAll() {
+    if (!confirm("Delete all tasks? This cannot be undone.")) return;
 
     try {
-
-        await fetch(`${API}/${id}`, {
-
-            method: "PUT",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-                title: newTitle
-            })
-
-        });
-
+        await fetch(`${API}/all`, { method: "DELETE" });
         await loadTasks();
-
     } catch (err) {
         console.error(err);
     }
-
 }
 
-// Search Task
-function searchTask() {
+function startEdit(id, btn) {
+    const task = btn.closest(".task");
+    const textEl = task.querySelector(".task-text");
+    const oldTitle = textEl.textContent;
 
-    const text = document
-        .getElementById("search")
-        .value
-        .toLowerCase();
+    const input = document.createElement("input");
+    input.className = "task-edit-input";
+    input.value = oldTitle;
 
-    const filtered = allTasks.filter(task =>
-        task.title.toLowerCase().includes(text)
-    );
+    textEl.replaceWith(input);
+    input.focus();
+    input.select();
 
-    renderTasks(filtered);
+    let saved = false;
 
-}
+    const save = async () => {
+        if (saved) return;
+        saved = true;
 
-// Enter key support
-document
-    .getElementById("taskInput")
-    .addEventListener("keypress", function (e) {
-
-        if (e.key === "Enter") {
-            addTask();
+        const newTitle = input.value.trim();
+        if (!newTitle || newTitle === oldTitle) {
+            const span = document.createElement("span");
+            span.className = "task-text";
+            span.textContent = oldTitle;
+            input.replaceWith(span);
+            return;
         }
 
+        try {
+            await fetch(`${API}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newTitle })
+            });
+            await loadTasks();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    input.addEventListener("keydown", e => {
+        if (e.key === "Enter") save();
+        if (e.key === "Escape") {
+            saved = true;
+            const span = document.createElement("span");
+            span.className = "task-text";
+            span.textContent = oldTitle;
+            input.replaceWith(span);
+        }
     });
 
-// Initial Load
+    input.addEventListener("blur", save);
+}
+
+function searchTask() {
+    applyFilter();
+}
+
+document.getElementById("taskInput").addEventListener("keypress", e => {
+    if (e.key === "Enter") addTask();
+});
+
 loadTasks();

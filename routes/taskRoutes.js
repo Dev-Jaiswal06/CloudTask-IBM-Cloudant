@@ -33,7 +33,8 @@ router.post("/", async (req, res) => {
         const result = await cloudant.postDocument({
             db: DB,
             document: {
-                title
+                title,
+                completed: false
             }
         });
 
@@ -57,7 +58,7 @@ router.put("/:id", async (req, res) => {
     try {
 
         const { id } = req.params;
-        const { title } = req.body;
+        const { title, completed } = req.body;
 
         // Get old document
         const oldDoc = await cloudant.getDocument({
@@ -70,7 +71,8 @@ router.put("/:id", async (req, res) => {
             document: {
                 _id: id,
                 _rev: oldDoc.result._rev,
-                title: title
+                title: title !== undefined ? title : oldDoc.result.title,
+                completed: completed !== undefined ? completed : oldDoc.result.completed
             }
         });
 
@@ -86,6 +88,31 @@ router.put("/:id", async (req, res) => {
     }
 
 });
+// DELETE all tasks
+router.delete("/all", async (req, res) => {
+    try {
+        const result = await cloudant.postAllDocs({
+            db: DB,
+            includeDocs: true,
+        });
+
+        const docs = result.result.rows
+            .map(row => row.doc)
+            .map(doc => ({ _id: doc._id, _rev: doc._rev, _deleted: true }));
+
+        if (docs.length > 0) {
+            await cloudant.postBulkDocs({
+                db: DB,
+                bulkDocs: { docs }
+            });
+        }
+
+        res.json({ message: "All tasks deleted" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // DELETE Task
 router.delete("/:id", async (req, res) => {
 
