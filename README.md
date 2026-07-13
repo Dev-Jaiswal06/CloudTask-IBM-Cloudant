@@ -7,7 +7,6 @@ Built as a project for IBM Cloud Computing.
 ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)
 ![IBM Cloudant](https://img.shields.io/badge/IBM%20Cloudant-054ADA?logo=ibm&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ---
 
