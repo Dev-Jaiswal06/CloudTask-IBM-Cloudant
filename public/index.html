@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudTask</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <h1>☁️ CloudTask Manager</h1>
+
+    <p id="count">Total Tasks : 0</p>
+
+    <input
+        type="text"
+        id="search"
+        placeholder="🔍 Search Task..."
+        onkeyup="searchTask()"
+    >
+
+    <div class="task-box">
+
+        <input
+            id="taskInput"
+            placeholder="Enter Task..."
+        >
+
+        <button onclick="addTask()">
+            Add
+        </button>
+
+    </div>
+
+    <div id="taskList"></div>
+
+</div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
